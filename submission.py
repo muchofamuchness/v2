@@ -1,3 +1,5 @@
+import time
+
 from Agent import Agent, AgentGreedy
 import math
 from TaxiEnv import TaxiEnv, manhattan_distance
@@ -96,8 +98,6 @@ class AgentMinimax(Agent):
         return child
 
     def minmax(self, env, agent, turn, depth, stop):
-        if stop():
-            return -1
 
         if env.done() or depth == 0:
             return self.heuristic(env, agent)
@@ -113,57 +113,82 @@ class AgentMinimax(Agent):
         else:
             return min(children_heuristics, key=lambda x: x[0])
 
+    def worker(self, env, agent, stop, best_opp):
+        depth = 1
 
-    def thread_run(self, env, agent_id, depth, stop):
+        while not stop():
+            re = self.minmax(env, agent, agent, depth, stop)
+            depth += 1
 
-        if stop():
-            return
+            if isinstance(re, int):
+                best_opp[0] = env.get_legal_operators(agent)[0]
 
-        re = self.minmax(env, agent_id, agent_id, depth, stop)
+            best_opp[0] = re[1]
 
-        if stop():
-            return
-
-        if isinstance(re, int):
-            self.best_op = env.get_legal_operators(agent_id)[0]
-
-        self.best_op = re[1]
-        return
 
 
     # TODO: section b : 1
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
 
         # re = self.minmax(env, agent_id, agent_id, 7, lambda : False)
-        #
+        # #
         # if isinstance(re, int):
         #     return env.get_legal_operators(agent_id)[0]
-        #
+        # #
         # return re[1]
         #
+
+        # Python program killing
+        # a thread using multiprocessing
+        # module
+
+        # import multiprocessing
+        #
+        #
+        # process = multiprocessing.Process(target=self.worker, args=(env, agent_id, lambda: False))
+        # process.start()
+        #
+        # time.sleep(time_limit * 0.97)
+        # process.terminate()
+        #
+        # return self.best_op
         from threading import Thread
-        import time
-
-        start_time = time.time()
-        self.stop_thread = False
-        depth = 1
-
-        while not self.stop_thread:
-
-            thread = Thread(target=self.thread_run, args=(env, agent_id, depth, lambda : self.stop_thread, ))
-            thread.start()
-
-            print(depth)
-            while thread.is_alive():
-                curr_time = time.time()
-                print((curr_time - start_time))
-                if (curr_time - start_time) > time_limit * 0.97:
-                    self.stop_thread = True
-                    thread.join()
-                    return self.best_op
-
-            depth += 1
+        # import time
+        #
+        best_opp = [None]
+        #
+        thread = Thread(target=self.worker, args=(env, agent_id, lambda: self.stop_thread, best_opp))
+        thread.start()
+        thread.join(time_limit * 0.7)
+        print("exit")
         return self.best_op
+        #
+        # time.sleep(time_limit * 0.9)
+        #
+        # self.stop_thread = True
+        # # thread.join()
+        #
+        # return best_opp[0]
+
+        # while not self.stop_thread:
+        #
+        #     thread = Thread(target=self.thread_run, args=(env, agent_id, depth, lambda : self.stop_thread))
+        #     thread.start()
+        #
+        #     print(depth)
+        #     while thread.is_alive():
+        #         curr_time = time.time()
+        #
+        #         if (curr_time - start_time) > time_limit * 0.93:
+        #             self.stop_thread = True
+        #             thread.join()
+        #
+        #             return self.best_op
+        #
+        #
+        #
+        #     depth += 1
+        # return self.best_op
         # return re[1]
 
 
