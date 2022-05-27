@@ -64,5 +64,12 @@ def run_agents():
         print('taxi', balances.index(max(balances)), 'wins!')
 
 
+
+def foo(d):
+    d[0] = 5
+
 if __name__ == "__main__":
-    run_agents()
+    # run_agents()
+    e = [123]
+    foo(e)
+    print(e)
