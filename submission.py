@@ -48,6 +48,13 @@ class AgentGreedyImproved(AgentGreedy):
 
 class AgentMinimax(Agent):
 
+    stop_thread = False
+
+    def __init__(self):
+        self.best_op = 0
+        self.stop_thread = False
+
+
     # def heuristic(self, env: TaxiEnv, agent: int, turn: int):
     def heuristic(self, env: TaxiEnv, taxi_id: int):
         reward = 0
@@ -88,14 +95,17 @@ class AgentMinimax(Agent):
         child.apply_operator(taxi_id, op)
         return child
 
-    def minmax(self, env, agent, turn, depth, time_limit):
+    def minmax(self, env, agent, turn, depth, stop):
+        if stop():
+            return -1
+
         if env.done() or depth == 0:
             return self.heuristic(env, agent)
 
         operators = env.get_legal_operators(turn)
         children = [self.create_child(env.clone(), turn, op) for op in operators]
 
-        children_heuristics = [(self.return_value(self.minmax(child, agent, 1-turn, depth - 1)), op) for child, op in zip(children, operators)]
+        children_heuristics = [(self.return_value(self.minmax(child, agent, 1-turn, depth - 1, stop)), op) for child, op in zip(children, operators)]
 
         if turn == agent:
             return max(children_heuristics, key=lambda x: x[0])
@@ -104,21 +114,57 @@ class AgentMinimax(Agent):
             return min(children_heuristics, key=lambda x: x[0])
 
 
-    def thread_run(self, depth):
-        
+    def thread_run(self, env, agent_id, depth, stop):
+
+        if stop():
+            return
+
+        re = self.minmax(env, agent_id, agent_id, depth, stop)
+
+        if stop():
+            return
+
+        if isinstance(re, int):
+            self.best_op = env.get_legal_operators(agent_id)[0]
+
+        self.best_op = re[1]
+        return
+
 
     # TODO: section b : 1
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
+
+        # re = self.minmax(env, agent_id, agent_id, 7, lambda : False)
+        #
+        # if isinstance(re, int):
+        #     return env.get_legal_operators(agent_id)[0]
+        #
+        # return re[1]
+        #
         from threading import Thread
+        import time
 
+        start_time = time.time()
+        self.stop_thread = False
         depth = 1
-        while True:
-            thread = Thread(target=self.thread_run, args=(depth))
-        re = self.minmax(env, agent_id, agent_id, 7)
-        if isinstance(re, int):
-            return env.get_legal_operators(agent_id)[0]
 
-        return re[1]
+        while not self.stop_thread:
+
+            thread = Thread(target=self.thread_run, args=(env, agent_id, depth, lambda : self.stop_thread, ))
+            thread.start()
+
+            print(depth)
+            while thread.is_alive():
+                curr_time = time.time()
+                print((curr_time - start_time))
+                if (curr_time - start_time) > time_limit * 0.97:
+                    self.stop_thread = True
+                    thread.join()
+                    return self.best_op
+
+            depth += 1
+        return self.best_op
+        # return re[1]
 
 
 class AgentAlphaBeta(Agent):
