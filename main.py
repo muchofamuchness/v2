@@ -49,6 +49,7 @@ def run_agents():
             end = time.time()
             if end - start > args.time_limit:
                 raise RuntimeError("Agent used too much time!")
+
             env.apply_operator(i, op)
             if args.print_game:
                 print('taxi ' + str(i) + ' chose ' + op)
