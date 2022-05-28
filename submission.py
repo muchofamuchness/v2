@@ -1,13 +1,15 @@
 from Agent import Agent, AgentGreedy
-import math
 from TaxiEnv import TaxiEnv, manhattan_distance
 import random
 import math
 import multiprocessing
 import time
+import ctypes
 
 #time_return_limit = 100
 #exit_time = 1
+
+op_to_int = {'move north' : 0, 'move south':1, 'move east':2, 'move west':3, 'refuel':4, 'pick up passenger':5, 'drop off passenger':6, 'park':7}
 
 class AgentGreedyImproved(AgentGreedy):
     # TODO: section a : 3
@@ -124,11 +126,11 @@ class AgentMinimax(Agent):
             result = self.minimax(env, agent_id, agent_id, depth)[1]
             if isinstance(result, str):
                 #operator.value = env.get_legal_operators(agent_id)[0]
-                operator.value = result
+                operator.value = op_to_int[result]
             depth += 1
 
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
-        operator = multiprocessing.Value('str', "")
+        operator = multiprocessing.Value('i', 0)
         proc = multiprocessing.Process(target=self.process_run, args=(env, agent_id, operator,))
         proc.start()
         proc.join(time_limit * 0.7)
