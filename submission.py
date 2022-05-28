@@ -1,4 +1,5 @@
 from Agent import Agent, AgentGreedy
+import math
 from TaxiEnv import TaxiEnv, manhattan_distance
 import random
 import math
@@ -96,7 +97,7 @@ class AgentMinimax(Agent):
     def minimax(self, env, agent, turn, depth):
         if env.done() or depth == 0:
             return self.heuristic(env, agent)
-        
+
         operators = env.get_legal_operators(turn)
 
         # children_heuristics = []
