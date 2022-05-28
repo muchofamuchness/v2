@@ -130,10 +130,6 @@ class AgentMinimax(Agent):
 
 
 class AgentAlphaBeta(Agent):
-    def __init__(self):
-        self.alpha = -math.inf
-        self.beta = math.inf
-
     def heuristic(self, env: TaxiEnv, taxi_id: int):
         reward = 0
         taxi = env.get_taxi(taxi_id)
@@ -200,29 +196,25 @@ class AgentAlphaBeta(Agent):
             curr_max = -math.inf
 
             for child, op in zip(children, operators):
-                v = self._alphabeta_(child, agent, 1-turn, depth - 1, alpha, beta)
-                curr_max = max(curr_max, v)
-
-                alpha = max(alpha, curr_max)
-                if curr_max >= beta:
-                    return math.inf
-
-            return curr_max
-
-        else:
-            curr_min = math.inf
+                child_heuristics = self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1, alpha, beta))
+                # v = (child_heuristics, op)
+                if child_heuristics > current_max[0]:
+                    current_max = (child_heuristics, op)
+                alpha = max(current_max[0], alpha)
+                if current_max[0] >= beta:
+                    return (math.inf, op)
+            return current_max
 
             for child, op in zip(children, operators):
-                v = self._alphabeta_(child, agent, 1-turn, depth - 1, alpha, beta)
-
-                curr_min = min(v, curr_min)
-
-                beta = min(beta, curr_min)
-
-                if curr_min <= alpha:
-                    return -math.inf
-
-            return curr_min
+                child_heuristics = self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1, alpha, beta))
+                # v = (child_heuristics, op)
+                if child_heuristics < current_min[0]:
+                    current_min = (child_heuristics, op)
+                #current_min = min([child_heuristics, current_min], key=lambda x: x[0])
+                beta = min(current_min[0], beta)
+                if current_min[0] <= alpha:
+                    return (-math.inf, op)
+            return current_min
 
     def process_run(self, env, agent_id, operator):
         depth = 1
@@ -242,7 +234,7 @@ class AgentAlphaBeta(Agent):
         start = time.time()
         proc = multiprocessing.Process(target=self.process_run, args=(env, agent_id, operator))
         proc.start()
-        proc.join(time_limit * 0.9)
+        proc.join(time_limit * 0.85)
         proc.terminate()
         # print(f"Run time: {time.time() - start}")
         return env.get_legal_operators(agent_id)[operator.value]
