@@ -129,7 +129,7 @@ class AgentMinimax(Agent):
         return env.get_legal_operators(agent_id)[operator.value]
 
 
-class AgentAlphaBeta(Agent):
+class AgentAlphaBeta1(Agent):
     def __init__(self):
         self.alpha = -math.inf
         self.beta = math.inf
@@ -171,40 +171,70 @@ class AgentAlphaBeta(Agent):
         child.apply_operator(taxi_id, op)
         return child
 
-    def alphabeta(self, env, agent, turn, depth, alpha, beta):
+
+
+    def alphabeta(self, env, agent, depth, alpha, beta):
+
+        operators = env.get_legal_operators(agent)
+        children = [self.create_child(env.clone(), agent, op) for op in operators]
+
+        curr_max = -math.inf
+        curr_max_op = None
+
+        for child, op in zip(children, operators):
+            v = self._alphabeta_(child, agent, 1-agent, depth - 1, alpha, beta)
+            if v > curr_max:
+                curr_max_op = op
+                curr_max = v
+
+        return curr_max_op, curr_max
+
+    def _alphabeta_(self, env, agent, turn, depth, alpha, beta):
         if env.done() or depth == 0:
             return self.heuristic(env, agent)
 
         operators = env.get_legal_operators(turn)
         children = [self.create_child(env.clone(), turn, op) for op in operators]
-        #children_heuristics = [(self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1)), op) ]
+
         if turn == agent:
-            current_max = (-math.inf, None)
+            curr_max = -math.inf
+
             for child, op in zip(children, operators):
-                child_heuristics = self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1, alpha, beta))
-                v = (child_heuristics, op)
-                current_max = max([v, current_max], key=lambda x: x[0])
-                alpha = max(current_max[0], alpha)
-                if current_max[0] >= beta:
-                    return (math.inf, None)
-            return current_max
+                v = self._alphabeta_(child, agent, 1-turn, depth - 1, alpha, beta)
+                curr_max = max(curr_max, v)
+
+                alpha = max(alpha, curr_max)
+                if curr_max >= beta:
+                    return math.inf
+
+            return curr_max
+
         else:
-            current_min = (math.inf, None)
+            curr_min = math.inf
+
             for child, op in zip(children, operators):
-                child_heuristics = self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1, alpha, beta))
-                v = (child_heuristics, op)
-                current_min = min([v, current_min], key=lambda x: x[0])
-                beta = min(current_min[0], beta)
-                if current_min[0] >= alpha:
-                    return (-math.inf, None)
-            return current_min
+                v = self._alphabeta_(child, agent, 1-turn, depth - 1, alpha, beta)
+
+                curr_min = min(v, curr_min)
+
+                beta = min(beta, curr_min)
+
+                if curr_min <= alpha:
+                    return -math.inf
+
+            return curr_min
 
     def process_run(self, env, agent_id, operator):
         depth = 1
+
+        curr_max_h = -math.inf
         while True:
-            result = self.alphabeta(env, agent_id, agent_id, depth, -math.inf, math.inf)[1]
-            operator.value = env.get_legal_operators(agent_id).index(result)
-            # print(depth)
+            result, h = self.alphabeta(env, agent_id, depth, -math.inf, math.inf)
+
+            if curr_max_h < h:
+                curr_max_h = h
+                operator.value = env.get_legal_operators(agent_id).index(result)
+
             depth += 1
 
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
