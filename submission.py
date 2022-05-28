@@ -174,7 +174,7 @@ class AgentAlphaBeta(Agent):
         return reward
 
     def return_value(self, a):
-        if isinstance(a, int):
+        if isinstance(a, int) or isinstance(a, float):
             return a
         return a[0]
 
@@ -194,12 +194,12 @@ class AgentAlphaBeta(Agent):
         if turn == agent:
             current_max = max(children_heuristics, key=lambda x: x[0])
             self.alpha = max(current_max[0], self.alpha)
-            current_max = None if current_max >= self.beta else current_max
+            current_max = None if current_max[0] >= self.beta else current_max
             return current_max
         else:
             current_min = min(children_heuristics, key=lambda x: x[0])
             self.beta = min(current_min[0], self.beta)
-            current_min = None if current_min <= self.alpha else current_min
+            current_min = None if current_min[0] <= self.alpha else current_min
             return current_min
 
 
@@ -208,7 +208,7 @@ class AgentAlphaBeta(Agent):
         while True:
             result = self.alphaBeta(env, agent_id, agent_id, depth)[1]
             operator.value = env.get_legal_operators(agent_id).index(result)
-
+            print(depth)
             depth += 1
 
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
