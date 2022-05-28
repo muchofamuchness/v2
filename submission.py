@@ -4,6 +4,12 @@ import random
 import math
 import multiprocessing
 import time
+import ctypes
+
+#time_return_limit = 100
+#exit_time = 1
+
+op_to_int = {'move north' : 0, 'move south':1, 'move east':2, 'move west':3, 'refuel':4, 'pick up passenger':5, 'drop off passenger':6, 'park':7}
 
 class AgentGreedyImproved(AgentGreedy):
     # TODO: section a : 3
@@ -16,6 +22,8 @@ class AgentGreedyImproved(AgentGreedy):
         max_heuristic = max(children_heuristics)
         index_selected = children_heuristics.index(max_heuristic)
         return operators[index_selected]
+
+    # start with 16 fuel
 
     def heuristic(self, env: TaxiEnv, taxi_id: int):
         reward = 0
@@ -108,6 +116,11 @@ class AgentMinimax(Agent):
             result = self.minimax(env, agent_id, agent_id, depth)[1]
             operator.value = env.get_legal_operators(agent_id).index(result)
             depth += 1
+
+
+    def worker(self, env, agent, depth, result, stop):
+        result.append(self.minimax(env, agent, agent, depth))
+
 
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
         operator = multiprocessing.Value('i', 0)
