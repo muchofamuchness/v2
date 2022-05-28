@@ -118,11 +118,6 @@ class AgentMinimax(Agent):
             
             depth += 1
 
-
-    def worker(self, env, agent, depth, result, stop):
-        result.append(self.minimax(env, agent, agent, depth))
-
-
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
         operator = multiprocessing.Value('i', 0)
         start = time.time()
@@ -130,25 +125,19 @@ class AgentMinimax(Agent):
         proc.start()
         proc.join(time_limit * 0.9)
         proc.terminate()
-        print(f"Run time: {time.time() - start}")
+        # print(f"Run time: {time.time() - start}")
         return env.get_legal_operators(agent_id)[operator.value]
 
 
 class AgentAlphaBeta(Agent):
-
-
-
     def __init__(self):
         self.alpha = -math.inf
         self.beta = math.inf
 
-    # TODO: section c : 1
     def heuristic(self, env: TaxiEnv, taxi_id: int):
         reward = 0
-
         taxi = env.get_taxi(taxi_id)
         other_taxi = env.get_taxi((taxi_id + 1) % 2)
-
         reward += (taxi.cash - other_taxi.cash) * 10  # more / less reward?
         reward += taxi.fuel * 5
         closest_station_id = 0 if (manhattan_distance(env.gas_stations[0].position, taxi.position) <=
@@ -182,33 +171,40 @@ class AgentAlphaBeta(Agent):
         child.apply_operator(taxi_id, op)
         return child
 
-    def alphaBeta(self, env, agent, turn, depth):
+    def alphabeta(self, env, agent, turn, depth, alpha, beta):
         if env.done() or depth == 0:
             return self.heuristic(env, agent)
 
         operators = env.get_legal_operators(turn)
         children = [self.create_child(env.clone(), turn, op) for op in operators]
-
-        children_heuristics = [(self.return_value(self.alphaBeta(child, agent, 1-turn, depth - 1)), op) for child, op in zip(children, operators)]
-
+        #children_heuristics = [(self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1)), op) ]
         if turn == agent:
-            current_max = max(children_heuristics, key=lambda x: x[0])
-            self.alpha = max(current_max[0], self.alpha)
-            current_max = None if current_max[0] >= self.beta else current_max
+            current_max = (-math.inf, None)
+            for child, op in zip(children, operators):
+                child_heuristics = self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1, alpha, beta))
+                v = (child_heuristics, op)
+                current_max = max([v, current_max], key=lambda x: x[0])
+                alpha = max(current_max[0], alpha)
+                if current_max[0] >= beta:
+                    return (math.inf, None)
             return current_max
         else:
-            current_min = min(children_heuristics, key=lambda x: x[0])
-            self.beta = min(current_min[0], self.beta)
-            current_min = None if current_min[0] <= self.alpha else current_min
+            current_min = (math.inf, None)
+            for child, op in zip(children, operators):
+                child_heuristics = self.return_value(self.alphabeta(child, agent, 1-turn, depth - 1, alpha, beta))
+                v = (child_heuristics, op)
+                current_min = min([v, current_min], key=lambda x: x[0])
+                beta = min(current_min[0], beta)
+                if current_min[0] >= alpha:
+                    return (-math.inf, None)
             return current_min
-
 
     def process_run(self, env, agent_id, operator):
         depth = 1
         while True:
-            result = self.alphaBeta(env, agent_id, agent_id, depth)[1]
+            result = self.alphabeta(env, agent_id, agent_id, depth, -math.inf, math.inf)[1]
             operator.value = env.get_legal_operators(agent_id).index(result)
-            print(depth)
+            # print(depth)
             depth += 1
 
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
