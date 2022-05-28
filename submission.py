@@ -91,8 +91,6 @@ class AgentMinimax(Agent):
         return a[0]
 
     def create_child(self, child, taxi_id, op):
-        print(f"id: {taxi_id}")
-        print(f"operator: {op}")
         child.apply_operator(taxi_id, op)
         return child
 
@@ -101,14 +99,6 @@ class AgentMinimax(Agent):
             return self.heuristic(env, agent)
 
         operators = env.get_legal_operators(turn)
-
-        # children_heuristics = []
-        # for op in operators:
-        #     child_env = env.clone()
-        #     if isinstance(op, int):
-        #         child_env.apply_operator(agent, op)  # or turn ???
-        #         val = self.return_value(self.minimax(child_env, agent, 1 - turn, depth - 1), op)
-        #         children_heuristics.insert(val)
 
         children = [self.create_child(env.clone(), turn, op) for op in operators]
         children_heuristics = [(self.return_value(self.minimax(child, agent, 1 - turn, depth - 1)), op) for
@@ -122,21 +112,26 @@ class AgentMinimax(Agent):
 
     def process_run(self, env, agent_id, operator):
         depth = 1
-        while(True):
+        while True:
             result = self.minimax(env, agent_id, agent_id, depth)[1]
-            if isinstance(result, str):
-                #operator.value = env.get_legal_operators(agent_id)[0]
-                operator.value = op_to_int[result]
+            operator.value = env.get_legal_operators(agent_id).index(result)
+            
             depth += 1
+
+
+    def worker(self, env, agent, depth, result, stop):
+        result.append(self.minimax(env, agent, agent, depth))
+
 
     def run_step(self, env: TaxiEnv, agent_id, time_limit):
         operator = multiprocessing.Value('i', 0)
-        proc = multiprocessing.Process(target=self.process_run, args=(env, agent_id, operator,))
+        start = time.time()
+        proc = multiprocessing.Process(target=self.process_run, args=(env, agent_id, operator))
         proc.start()
-        proc.join(time_limit * 0.7)
+        proc.join(time_limit * 0.9)
         proc.terminate()
-        print("exit")
-        return operator.value
+        print(f"Run time: {time.time() - start}")
+        return env.get_legal_operators(agent_id)[operator.value]
 
 class AgentAlphaBeta(Agent):
     # TODO: section c : 1
